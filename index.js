@@ -2,31 +2,22 @@ const express = require('express');
 const app = express();
 const PORT = 8080;
 
-const gamedig = require('gamedig');
+// Middleware to parse JSON bodies
+app.use(express.json());  // For parsing application/json
 
-// API Endpoint
-app.get('/serverinfo', async (req, res) => {
-    try {
-        const state = await gamedig.query({
-            type: 'rust',
-            host: '89.213.214.15',  // <-- Your Rust server IP
-            port: 28021             // <-- Your query port (usually gameport + 1)
-        });
+// API Endpoint to receive data from the Rust plugin
+app.post('/serverinfo', (req, res) => {
+    const data = req.body;  // This is the data sent from the plugin
 
-        res.json({
-            server_online: true,
-            server_name: state.name,
-            players_online: state.players.length,
-            max_players: state.maxplayers,
-            map: state.map
-        });
-    } catch (error) {
-        console.error('Failed to query server:', error);
-        res.status(500).json({ error: "Server offline or unreachable" });
-    }
+    console.log('Received data from Rust plugin:', data);
+
+    // Process the data as needed (e.g., save it to a database, log it, etc.)
+    // For now, we'll just send a success response
+    res.status(200).json({ message: 'Data received successfully' });
 });
 
 // Start the server
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`API Server running at http://0.0.0.0:${PORT}`);
 });
+
