@@ -4,7 +4,7 @@ const PORT = 8080;
 
 app.use(express.json());
 
-// Store latest data here
+// Store latest server info
 let latestRustData = {
     server_online: false,
     server_name: "",
@@ -13,12 +13,12 @@ let latestRustData = {
     map: ""
 };
 
-// Receive data from the Rust plugin
-app.post('/uploadRustData', (req, res) => {
+// Receive updated server info from Rust plugin
+app.post('/server', (req, res) => {
     const data = req.body;
-    console.log('Received data from Rust plugin:', data);
+    console.log('Received data from Rust plugin (from /server):', data);
 
-    // Save incoming data
+    // Save the incoming data
     latestRustData = data;
 
     res.status(200).json({ message: 'Data received successfully' });
@@ -33,3 +33,4 @@ app.get('/serverinfo', (req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`API Server running at http://0.0.0.0:${PORT}`);
 });
+
