@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto'); // For hashing passcodes
 const app = express();
 const PORT = 8080;
 
@@ -16,6 +17,12 @@ let latestRustData = {
 // Store latest stats data
 let latestStatsData = [];
 
+// Store pending link codes (code => SteamID)
+let pendingLinks = {};
+
+// Store linked accounts (SteamID => passcodeHash)
+let linkedAccounts = {};
+
 // Receive updated server info from Rust plugin
 app.post('/server', (req, res) => {
     const data = req.body;
@@ -30,7 +37,7 @@ app.get('/serverinfo', (req, res) => {
     res.json(latestRustData);
 });
 
-// 📈 New: Receive updated stats from Rust plugin
+// Receive updated stats from Rust plugin
 app.post('/stats', (req, res) => {
     const data = req.body;
     console.log('Received stats data from Rust plugin:', data);
@@ -39,7 +46,7 @@ app.post('/stats', (req, res) => {
     res.status(200).json({ message: 'Stats data received successfully' });
 });
 
-// 📈 New: Provide formatted stats to the mobile app
+// Provide formatted stats to the mobile app
 app.get('/stats', (req, res) => {
     if (!latestStatsData || latestStatsData.length === 0) {
         return res.json({ players: [], yourStats: null });
@@ -76,6 +83,20 @@ app.get('/stats', (req, res) => {
     });
 });
 
+// 📩 Receive pending link codes from Rust plugin
+app.post('/pendinglink', (req, res) => {
+    const { code, steamId } = req.body;
+
+    if (!code || !steamId) {
+        return res.status(400).json({ error: 'Code and SteamID are required.' });
+    }
+
+    pendingLinks[code] = steamId;
+    console.log(`Saved pending link: Code=${code}, SteamID=${steamId}`);
+    res.json({ success: true });
+});
+
+// 📲 Handle account linking from mobile app
 app.post('/linkcode', (req, res) => {
     const { code, passcode } = req.body;
 
@@ -85,16 +106,10 @@ app.post('/linkcode', (req, res) => {
 
     console.log(`Received link attempt: Code=${code}, Passcode=${passcode}`);
 
-    // ❗ TEMPORARY FAKE MATCH for testing
-    const fakeValidCodes = {
-        "ABC123": "76561198000000001",
-        "XYZ789": "76561198000000002"
-    };
-
-    const steamId = fakeValidCodes[code];
+    const steamId = pendingLinks[code];
 
     if (!steamId) {
-        return res.status(404).json({ error: 'Invalid link code.' });
+        return res.status(404).json({ error: 'Invalid or expired link code.' });
     }
 
     // Hash the passcode
@@ -102,9 +117,13 @@ app.post('/linkcode', (req, res) => {
 
     linkedAccounts[steamId] = { passcodeHash };
 
+    // Clear the pending code now that it's linked
+    delete pendingLinks[code];
+
     console.log(`Linked SteamID ${steamId} with hashed passcode.`);
     res.json({ success: true });
 });
+
 // Start the server
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`API Server running at http://0.0.0.0:${PORT}`);
