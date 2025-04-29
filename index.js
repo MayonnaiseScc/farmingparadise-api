@@ -140,19 +140,35 @@ app.post('/chat/send', (req, res) => {
         return res.status(400).json({ error: 'Missing steamId or message' });
     }
 
-    // Actually format and save the message properly
-    const formattedMessage = source === "rust"
+    let name = steamId;
+
+    // Try to find name from latest stats data for use in app display
+    if (latestStatsData && Array.isArray(latestStatsData)) {
+        const player = latestStatsData.find(p => p.SteamID.toString() === steamId.toString());
+        if (player) name = player.SteamName;
+    }
+
+    // Save formatted message to chat log (Rust plugin expects SteamID)
+    const formattedForRust = source === "rust"
         ? `${steamId}: ${message}`
         : `[Mobile] ${steamId}: ${message}`;
 
-    chatMessages.push(formattedMessage);
+    // Save formatted message for app display (uses player name if found)
+    const formattedForApp = source === "rust"
+        ? `${name}: ${message}`
+        : `[Mobile] ${name}: ${message}`;
+
+    chatMessages.push(formattedForRust);
 
     if (chatMessages.length > 100) {
         chatMessages.shift();
     }
 
-    res.status(200).json({ success: true }); // only respond success back to Rust/mobile app
+    console.log(`${source === "rust" ? "Rust" : "Mobile"} chat saved:`, formattedForApp);
+
+    res.status(200).json({ success: true });
 });
+
 
 // Start the server
 app.listen(PORT, "0.0.0.0", () => {
