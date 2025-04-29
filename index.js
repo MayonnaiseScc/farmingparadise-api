@@ -83,16 +83,17 @@ app.get('/stats', (req, res) => {
     });
 });
 
-// 📩 Receive pending link codes from Rust plugin
 app.post('/pendinglink', (req, res) => {
-    const { code, steamId } = req.body;
+    const { code, steamId, name } = req.body;
 
-    if (!code || !steamId) {
-        return res.status(400).json({ error: 'Code and SteamID are required.' });
+    if (!code || !steamId || !name) {
+        return res.status(400).json({ error: 'Code, SteamID, and name are required.' });
     }
 
     pendingLinks[code] = steamId;
-    console.log(`Saved pending link: Code=${code}, SteamID=${steamId}`);
+    latestPlayerNames[steamId] = name;
+
+    console.log(`[LinkAPI] Saved pending link: Code=${code}, SteamID=${steamId}, Name=${name}`);
     res.json({ success: true });
 });
 
@@ -130,7 +131,6 @@ app.post('/linkcode', (req, res) => {
         PlayerName: name
     });
 });
-
 
 // In-memory chat storage
 let chatMessages = [];
