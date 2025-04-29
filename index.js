@@ -143,7 +143,7 @@ app.post('/chat/send', (req, res) => {
     console.log(`Mobile chat from ${steamId}: ${message}`);
 
     // Save it to chatMessages
-    const displayMessage = `[Mobile] ${steamId}: ${message}`;
+    const displayMessage = `[Mobile] ${playerName}: ${message}`;
     chatMessages.push(displayMessage);
 
     // (Optional later: Forward this to Rust server via WebRequest)
