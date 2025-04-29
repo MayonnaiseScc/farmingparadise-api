@@ -186,6 +186,10 @@ app.get('/names', (req, res) => {
     res.json(latestPlayerNames);
 });
 
+app.get('/names', (req, res) => {
+    res.json(latestPlayerNames);
+});
+
 // Start the server
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`API Server running at http://0.0.0.0:${PORT}`);
