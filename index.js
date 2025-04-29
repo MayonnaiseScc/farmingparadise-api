@@ -72,14 +72,9 @@ app.get('/stats', (req, res) => {
     });
 
     const topPlayers = latestStatsData.map(simplifyPlayer);
-
-    const yourSteamId = 76561199223465913; // <-- Replace this with YOUR real SteamID if needed
-    const yourStatsRaw = latestStatsData.find(p => p.SteamID === yourSteamId);
-    const yourStats = yourStatsRaw ? simplifyPlayer(yourStatsRaw) : null;
-
+    
     res.json({
         players: topPlayers,
-        yourStats: yourStats
     });
 });
 
@@ -161,21 +156,6 @@ app.post('/chat/send', (req, res) => {
 });
 
 let latestPlayerNames = {};
-
-app.post('/namesync', (req, res) => {
-    const names = req.body;
-    if (!names || typeof names !== 'object') {
-        return res.status(400).json({ error: 'Invalid names data' });
-    }
-
-    latestPlayerNames = names;
-    console.log("[NameSync] Updated", Object.keys(names).length, "names.");
-    res.status(200).json({ success: true });
-});
-
-app.get('/names', (req, res) => {
-    res.json(latestPlayerNames);
-});
 
 app.get('/names', (req, res) => {
     res.json(latestPlayerNames);
