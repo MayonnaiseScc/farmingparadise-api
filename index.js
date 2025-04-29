@@ -134,21 +134,28 @@ app.get('/chat', (req, res) => {
 
 // POST /chat/send - receive a message from mobile
 app.post('/chat/send', (req, res) => {
-    const { steamId, message } = req.body;
+    const { steamId, message, source } = req.body;
 
     if (!steamId || !message) {
         return res.status(400).json({ error: 'Missing steamId or message' });
     }
 
-    console.log(`Mobile chat from ${steamId}: ${message}`);
+    let name = "Unknown";
 
-    // Save it to chatMessages
-    const displayMessage = `[Mobile] ${playerName}: ${message}`;
+    // Try to find player name from stats
+    if (latestStatsData && Array.isArray(latestStatsData)) {
+        const player = latestStatsData.find(p => p.SteamID == steamId);
+        if (player) name = player.SteamName;
+    }
+
+    console.log(`${source === "rust" ? "Rust chat" : "Mobile chat"} from ${steamId}: ${message}`);
+
+    const displayMessage = source === "rust"
+        ? `${name}: ${message}`
+        : `[Mobile] ${name}: ${message}`;
+
     chatMessages.push(displayMessage);
 
-    // (Optional later: Forward this to Rust server via WebRequest)
-
-    // Limit chat history (optional: only keep latest 100 messages)
     if (chatMessages.length > 100) {
         chatMessages.shift();
     }
