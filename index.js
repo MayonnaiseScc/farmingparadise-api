@@ -112,17 +112,25 @@ app.post('/linkcode', (req, res) => {
         return res.status(404).json({ error: 'Invalid or expired link code.' });
     }
 
+    const name = latestPlayerNames[steamId] || "UnknownPlayer"; // <--- new: grab name if possible
+
     // Hash the passcode
     const passcodeHash = crypto.createHash('sha256').update(passcode).digest('hex');
 
-    linkedAccounts[steamId] = { passcodeHash };
+    linkedAccounts[steamId] = { passcodeHash, playerName: name };
 
     // Clear the pending code now that it's linked
     delete pendingLinks[code];
 
-    console.log(`Linked SteamID ${steamId} with hashed passcode.`);
-    res.json({ success: true });
+    console.log(`Linked SteamID ${steamId} (${name}) with hashed passcode.`);
+
+    // Return both SteamID and PlayerName to the app!
+    res.json({
+        SteamID: steamId,
+        PlayerName: name
+    });
 });
+
 
 // In-memory chat storage
 let chatMessages = [];
