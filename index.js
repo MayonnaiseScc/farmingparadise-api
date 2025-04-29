@@ -122,7 +122,7 @@ app.post('/linkcode', (req, res) => {
 
     // Return both SteamID and PlayerName to the app!
     res.json({
-        SteamID: steamId,
+        SteamID: steamId.toString(), // <-- FORCE to string here
         PlayerName: name
     });
 });
