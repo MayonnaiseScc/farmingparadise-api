@@ -76,6 +76,35 @@ app.get('/stats', (req, res) => {
     });
 });
 
+app.post('/linkcode', (req, res) => {
+    const { code, passcode } = req.body;
+
+    if (!code || !passcode) {
+        return res.status(400).json({ error: 'Code and passcode are required.' });
+    }
+
+    console.log(`Received link attempt: Code=${code}, Passcode=${passcode}`);
+
+    // ❗ TEMPORARY FAKE MATCH for testing
+    const fakeValidCodes = {
+        "ABC123": "76561198000000001",
+        "XYZ789": "76561198000000002"
+    };
+
+    const steamId = fakeValidCodes[code];
+
+    if (!steamId) {
+        return res.status(404).json({ error: 'Invalid link code.' });
+    }
+
+    // Hash the passcode
+    const passcodeHash = crypto.createHash('sha256').update(passcode).digest('hex');
+
+    linkedAccounts[steamId] = { passcodeHash };
+
+    console.log(`Linked SteamID ${steamId} with hashed passcode.`);
+    res.json({ success: true });
+});
 // Start the server
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`API Server running at http://0.0.0.0:${PORT}`);
