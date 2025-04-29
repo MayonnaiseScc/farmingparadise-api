@@ -132,28 +132,23 @@ app.get('/chat', (req, res) => {
     res.json(chatMessages);
 });
 
-// POST /chat/send - receive a message from mobile
+// POST /chat/send
 app.post('/chat/send', (req, res) => {
-    const { steamId, message } = req.body;
+    const { name, message } = req.body;
 
-    if (!steamId || !message) {
-        return res.status(400).json({ error: 'Missing steamId or message' });
+    if (!name || !message) {
+        return res.status(400).json({ error: 'Missing name or message' });
     }
 
-    // Format it properly
-    const formattedMessage = `${steamId}: ${message}`;
+    const formattedMessage = `${name}: ${message}`;
 
-    // Save to chat messages array
     chatMessages.push(formattedMessage);
 
-    // (Optional) Keep chat history trimmed
     if (chatMessages.length > 100) {
         chatMessages.shift();
     }
 
     console.log(`Saved chat: ${formattedMessage}`);
-
-    // Reply success back to the client (DO NOT save this to chat)
     res.status(200).json({ success: true });
 });
 
