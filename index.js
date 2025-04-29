@@ -140,27 +140,18 @@ app.post('/chat/send', (req, res) => {
         return res.status(400).json({ error: 'Missing steamId or message' });
     }
 
-    let name = "Unknown";
+    // Actually format and save the message properly
+    const formattedMessage = source === "rust"
+        ? `${steamId}: ${message}`
+        : `[Mobile] ${steamId}: ${message}`;
 
-    // Try to find player name from stats
-    if (latestStatsData && Array.isArray(latestStatsData)) {
-        const player = latestStatsData.find(p => p.SteamID == steamId);
-        if (player) name = player.SteamName;
-    }
-
-    console.log(`${source === "rust" ? "Rust chat" : "Mobile chat"} from ${steamId}: ${message}`);
-
-    const displayMessage = source === "rust"
-        ? `${name}: ${message}`
-        : `[Mobile] ${name}: ${message}`;
-
-    chatMessages.push(displayMessage);
+    chatMessages.push(formattedMessage);
 
     if (chatMessages.length > 100) {
         chatMessages.shift();
     }
 
-    res.status(200).json({ success: true });
+    res.status(200).json({ success: true }); // only respond success back to Rust/mobile app
 });
 
 // Start the server
