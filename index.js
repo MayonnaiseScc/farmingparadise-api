@@ -169,6 +169,22 @@ app.post('/chat/send', (req, res) => {
     res.status(200).json({ success: true });
 });
 
+let latestPlayerNames = {};
+
+app.post('/namesync', (req, res) => {
+    const names = req.body;
+    if (!names || typeof names !== 'object') {
+        return res.status(400).json({ error: 'Invalid names data' });
+    }
+
+    latestPlayerNames = names;
+    console.log("[NameSync] Updated", Object.keys(names).length, "names.");
+    res.status(200).json({ success: true });
+});
+
+app.get('/names', (req, res) => {
+    res.json(latestPlayerNames);
+});
 
 // Start the server
 app.listen(PORT, "0.0.0.0", () => {
