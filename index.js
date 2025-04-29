@@ -1,6 +1,4 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
 const app = express();
 const PORT = 8080;
 
@@ -41,9 +39,41 @@ app.post('/stats', (req, res) => {
     res.status(200).json({ message: 'Stats data received successfully' });
 });
 
-// 📈 New: Provide stats to the mobile app
+// 📈 New: Provide formatted stats to the mobile app
 app.get('/stats', (req, res) => {
-    res.json(latestStatsData);
+    if (!latestStatsData || latestStatsData.length === 0) {
+        return res.json({ players: [], yourStats: null });
+    }
+
+    const simplifyPlayer = (player) => ({
+        name: player.SteamName,
+        plantsGathered: Math.floor(player.KillSaves?.PlantsGathered || 0),
+        hempGathered: Math.floor(player.KillSaves?.HempGathered || 0),
+        berriesGathered: Math.floor(player.KillSaves?.BerriesGathered || 0),
+        pumpkinsGathered: Math.floor(player.KillSaves?.PumpkinsGathered || 0),
+        cornGathered: Math.floor(player.KillSaves?.CornGathered || 0),
+        potatoGathered: Math.floor(player.KillSaves?.PotatoGathered || 0),
+        wheatGathered: Math.floor(player.KillSaves?.WheatGathered || 0),
+        npcKills: Math.floor(player.KillSaves?.NPCKills || 0),
+        sulfurFarmed: Math.floor(player.KillSaves?.Sulfur_Ore_Farmed || 0),
+        stonesFarmed: Math.floor(player.KillSaves?.Stones_Farmed || 0),
+        metalFarmed: Math.floor(player.KillSaves?.Metal_Ore_Farmed || 0),
+        lootContainerKills: Math.floor(player.KillSaves?.LootContainerKills || 0),
+        rocketBasicFired: Math.floor(player.KillSaves?.rocket_basic_fired || 0),
+        rocketHvFired: Math.floor(player.KillSaves?.rocket_hv_fired || 0),
+        explosiveTimedThrown: Math.floor(player.KillSaves?.['explosive.timed.deployed.thrown'] || 0)
+    });
+
+    const topPlayers = latestStatsData.map(simplifyPlayer);
+
+    const yourSteamId = 76561199223465913; // <-- Replace this with YOUR real SteamID if needed
+    const yourStatsRaw = latestStatsData.find(p => p.SteamID === yourSteamId);
+    const yourStats = yourStatsRaw ? simplifyPlayer(yourStatsRaw) : null;
+
+    res.json({
+        players: topPlayers,
+        yourStats: yourStats
+    });
 });
 
 // Start the server
