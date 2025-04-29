@@ -124,6 +124,38 @@ app.post('/linkcode', (req, res) => {
     res.json({ success: true });
 });
 
+// In-memory chat storage
+let chatMessages = [];
+
+// GET /chat - return chat history
+app.get('/chat', (req, res) => {
+    res.json(chatMessages);
+});
+
+// POST /chat/send - receive a message from mobile
+app.post('/chat/send', (req, res) => {
+    const { steamId, message } = req.body;
+
+    if (!steamId || !message) {
+        return res.status(400).json({ error: 'Missing steamId or message' });
+    }
+
+    console.log(`Mobile chat from ${steamId}: ${message}`);
+
+    // Save it to chatMessages
+    const displayMessage = `[Mobile] ${steamId}: ${message}`;
+    chatMessages.push(displayMessage);
+
+    // (Optional later: Forward this to Rust server via WebRequest)
+
+    // Limit chat history (optional: only keep latest 100 messages)
+    if (chatMessages.length > 100) {
+        chatMessages.shift();
+    }
+
+    res.status(200).json({ success: true });
+});
+
 // Start the server
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`API Server running at http://0.0.0.0:${PORT}`);
