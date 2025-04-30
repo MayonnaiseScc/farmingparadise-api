@@ -17,10 +17,10 @@ const mainStatsPath = path.join(dataFolder, 'main_stats.json');
 let latestPlayerNames = fs.existsSync(namesPath) ? require(namesPath) : {};
 let latestStatsData = fs.existsSync(statsPath) ? require(statsPath) : [];
 let latestMainStats = fs.existsSync(mainStatsPath) ? require(mainStatsPath) : [];
-
 let pendingLinks = {};
 let linkedAccounts = {};
 let chatMessages = [];
+let latestEventStatus = {}; // ✅ Added for EventStatusSender
 
 let latestRustData = {
     server_online: false,
@@ -137,7 +137,6 @@ app.post('/chat/send', (req, res) => {
 
     if (!name || !message) return res.status(400).json({ error: 'Missing name or message' });
 
-    // If name is a SteamID, resolve it
     const resolvedName = latestPlayerNames[name] || linkedAccounts[name]?.playerName || name;
     const formattedMessage = `${resolvedName}: ${message}`;
 
@@ -150,6 +149,17 @@ app.post('/chat/send', (req, res) => {
 
 app.get('/names', (req, res) => {
     res.json(latestPlayerNames);
+});
+
+// ✅ New endpoints for event status
+app.post('/events', (req, res) => {
+    latestEventStatus = req.body;
+    console.log('[Events] Received event status:', latestEventStatus);
+    res.status(200).json({ message: 'Event status received successfully' });
+});
+
+app.get('/events', (req, res) => {
+    res.json(latestEventStatus);
 });
 
 app.listen(PORT, "0.0.0.0", () => {
