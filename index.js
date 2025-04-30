@@ -32,6 +32,31 @@ app.post('/server', (req, res) => {
     res.status(200).json({ message: 'Server info received successfully' });
 });
 
+let latestMainStats = []; // <-- new memory store
+
+app.post('/mainstats', (req, res) => {
+    const data = req.body;
+    console.log('Received main page stats data:', data);
+
+    latestMainStats = data;
+    res.status(200).json({ message: 'Main stats received successfully' });
+});
+
+app.get('/mainstats', (req, res) => {
+    if (!latestMainStats || latestMainStats.length === 0) {
+        return res.json({ players: [] });
+    }
+
+    const simplified = latestMainStats.map(player => ({
+        name: player.SteamName,
+        xp: Math.floor(player.KillSaves?.XP || 0),
+        playtime: Math.floor(player.KillSaves?.PlaytimeHours || 0),
+        money: Math.floor(player.KillSaves?.Money || 0),
+    }));
+
+    res.json({ players: simplified });
+});
+
 // Provide server info to the mobile app
 app.get('/serverinfo', (req, res) => {
     res.json(latestRustData);
