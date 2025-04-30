@@ -1,4 +1,3 @@
-// ✨ Required modules
 const express = require('express');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -8,23 +7,20 @@ const PORT = 8080;
 
 app.use(express.json());
 
-// 📁 Ensure data folder exists
 const dataFolder = path.join(__dirname, 'data');
 if (!fs.existsSync(dataFolder)) fs.mkdirSync(dataFolder);
 
-// 📁 Data file paths
 const namesPath = path.join(dataFolder, 'player_names.json');
 const statsPath = path.join(dataFolder, 'player_stats.json');
 const mainStatsPath = path.join(dataFolder, 'main_stats.json');
 
-// 🧠 Load saved data
 let latestPlayerNames = fs.existsSync(namesPath) ? require(namesPath) : {};
 let latestStatsData = fs.existsSync(statsPath) ? require(statsPath) : [];
 let latestMainStats = fs.existsSync(mainStatsPath) ? require(mainStatsPath) : [];
 
-// Store pending link codes
 let pendingLinks = {};
 let linkedAccounts = {};
+let chatMessages = [];
 
 let latestRustData = {
     server_online: false,
@@ -35,30 +31,28 @@ let latestRustData = {
 };
 
 app.post('/server', (req, res) => {
-    const data = req.body;
-    console.log('Received data from Rust plugin (from /server):', data);
-
-    latestRustData = data;
+    latestRustData = req.body;
+    console.log('[Server] Info received:', latestRustData);
     res.status(200).json({ message: 'Server info received successfully' });
 });
 
-app.post('/mainstats', (req, res) => {
-    const data = req.body;
-    console.log('Received main page stats data:', data);
+app.get('/serverinfo', (req, res) => {
+    res.json(latestRustData);
+});
 
-    latestMainStats = data;
+app.post('/mainstats', (req, res) => {
+    latestMainStats = req.body;
     fs.writeFileSync(mainStatsPath, JSON.stringify(latestMainStats, null, 2));
+    console.log('[MainStats] Updated main stats.');
     res.status(200).json({ message: 'Main stats received successfully' });
 });
 
 app.get('/mainstats', (req, res) => {
-    if (!latestMainStats || latestMainStats.length === 0) {
-        return res.json({ players: [] });
-    }
+    if (!latestMainStats || latestMainStats.length === 0) return res.json({ players: [] });
 
     const simplified = latestMainStats.map(player => ({
         steamId: String(player.SteamID),
-        name: player.SteamName,
+        name: latestPlayerNames[String(player.SteamID)] || player.SteamName || "Unknown",
         level: Math.floor(player.MainStats?.Level || 0),
         money: Math.floor(player.MainStats?.Money || 0),
         playtime: Math.floor(player.MainStats?.PlaytimeHours || 0),
@@ -67,23 +61,15 @@ app.get('/mainstats', (req, res) => {
     res.json({ players: simplified });
 });
 
-app.get('/serverinfo', (req, res) => {
-    res.json(latestRustData);
-});
-
 app.post('/stats', (req, res) => {
-    const data = req.body;
-    console.log('Received stats data from Rust plugin:', data);
-
-    latestStatsData = data;
+    latestStatsData = req.body;
     fs.writeFileSync(statsPath, JSON.stringify(latestStatsData, null, 2));
+    console.log('[Stats] Received full stats update.');
     res.status(200).json({ message: 'Stats data received successfully' });
 });
 
 app.get('/stats', (req, res) => {
-    if (!latestStatsData || latestStatsData.length === 0) {
-        return res.json({ players: [], yourStats: null });
-    }
+    if (!latestStatsData || latestStatsData.length === 0) return res.json({ players: [], yourStats: null });
 
     const simplifyPlayer = (player) => ({
         name: player.SteamName,
@@ -111,39 +97,26 @@ app.get('/stats', (req, res) => {
 app.post('/pendinglink', (req, res) => {
     let { code, steamId, name } = req.body;
 
-    if (!code || !steamId || !name) {
-        return res.status(400).json({ error: 'Code, SteamID, and name are required.' });
-    }
+    if (!code || !steamId || !name) return res.status(400).json({ error: 'Code, SteamID, and name are required.' });
 
-    steamId = String(steamId); // 🔒 Force string to prevent precision loss
-
-    if (!/^\d{17}$/.test(steamId)) {
-        return res.status(400).json({ error: 'Invalid SteamID format.' });
-    }
+    steamId = String(steamId);
+    if (!/^\d{17}$/.test(steamId)) return res.status(400).json({ error: 'Invalid SteamID format.' });
 
     pendingLinks[code] = steamId;
     latestPlayerNames[steamId] = name;
-
     fs.writeFileSync(namesPath, JSON.stringify(latestPlayerNames, null, 2));
 
-    console.log(`[LinkAPI] Saved pending link: Code=${code}, SteamID=${steamId}, Name=${name}`);
+    console.log(`[LinkAPI] Saved: Code=${code}, SteamID=${steamId}, Name=${name}`);
     res.json({ success: true });
 });
 
 app.post('/linkcode', (req, res) => {
     const { code, passcode } = req.body;
 
-    if (!code || !passcode) {
-        return res.status(400).json({ error: 'Code and passcode are required.' });
-    }
-
-    console.log(`Received link attempt: Code=${code}, Passcode=${passcode}`);
+    if (!code || !passcode) return res.status(400).json({ error: 'Code and passcode are required.' });
 
     const steamId = pendingLinks[code];
-
-    if (!steamId) {
-        return res.status(404).json({ error: 'Invalid or expired link code.' });
-    }
+    if (!steamId) return res.status(404).json({ error: 'Invalid or expired link code.' });
 
     const name = latestPlayerNames[steamId] || "UnknownPlayer";
     const passcodeHash = crypto.createHash('sha256').update(passcode).digest('hex');
@@ -151,34 +124,27 @@ app.post('/linkcode', (req, res) => {
     linkedAccounts[steamId] = { passcodeHash, playerName: name };
     delete pendingLinks[code];
 
-    console.log(`Linked SteamID ${steamId} (${name}) with hashed passcode.`);
+    console.log(`[LinkAPI] Linked: SteamID=${steamId} | PlayerName=${name}`);
     res.json({ SteamID: steamId.toString(), PlayerName: name });
 });
-
-let chatMessages = [];
 
 app.get('/chat', (req, res) => {
     res.json(chatMessages);
 });
 
 app.post('/chat/send', (req, res) => {
-    const { name, message } = req.body;
+    let { name, message } = req.body;
 
-    if (!name || !message) {
-        return res.status(400).json({ error: 'Missing name or message' });
-    }
+    if (!name || !message) return res.status(400).json({ error: 'Missing name or message' });
 
-    // Attempt to resolve display name if `name` is actually a SteamID
-    const displayName = latestPlayerNames[name] || linkedAccounts[name]?.playerName || name;
+    // If name is a SteamID, resolve it
+    const resolvedName = latestPlayerNames[name] || linkedAccounts[name]?.playerName || name;
+    const formattedMessage = `${resolvedName}: ${message}`;
 
-    const formattedMessage = `${displayName}: ${message}`;
     chatMessages.push(formattedMessage);
+    if (chatMessages.length > 100) chatMessages.shift();
 
-    if (chatMessages.length > 100) {
-        chatMessages.shift();
-    }
-
-    console.log(`Saved chat: ${formattedMessage}`);
+    console.log(`[Chat] ${formattedMessage}`);
     res.status(200).json({ success: true });
 });
 
@@ -187,6 +153,5 @@ app.get('/names', (req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-    console.log(`API Server running at http://0.0.0.0:${PORT}`);
+    console.log(`✅ API Server running at http://0.0.0.0:${PORT}`);
 });
-
