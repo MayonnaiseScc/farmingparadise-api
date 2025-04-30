@@ -49,9 +49,10 @@ app.get('/mainstats', (req, res) => {
 
     const simplified = latestMainStats.map(player => ({
         name: player.SteamName,
-        xp: Math.floor(player.KillSaves?.XP || 0),
-        playtime: Math.floor(player.KillSaves?.PlaytimeHours || 0),
-        money: Math.floor(player.KillSaves?.Money || 0),
+        level: Math.floor(player.MainStats?.Level || 0),
+        xp: Math.floor(player.MainStats?.XP || 0),
+        money: Math.floor(player.MainStats?.Money || 0),
+        playtime: Math.floor(player.MainStats?.PlaytimeHours || 0),
     }));
 
     res.json({ players: simplified });
