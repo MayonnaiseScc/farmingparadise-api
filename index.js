@@ -57,7 +57,7 @@ app.get('/mainstats', (req, res) => {
     }
 
     const simplified = latestMainStats.map(player => ({
-        steamId: player.SteamID,
+        steamId: String(player.SteamID),
         name: player.SteamName,
         level: Math.floor(player.MainStats?.Level || 0),
         money: Math.floor(player.MainStats?.Money || 0),
