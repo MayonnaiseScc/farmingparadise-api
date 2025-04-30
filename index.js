@@ -163,7 +163,10 @@ app.post('/chat/send', (req, res) => {
         return res.status(400).json({ error: 'Missing name or message' });
     }
 
-    const formattedMessage = `${name}: ${message}`;
+    // Attempt to resolve display name if `name` is actually a SteamID
+    const displayName = latestPlayerNames[name] || linkedAccounts[name]?.playerName || name;
+
+    const formattedMessage = `${displayName}: ${message}`;
     chatMessages.push(formattedMessage);
 
     if (chatMessages.length > 100) {
