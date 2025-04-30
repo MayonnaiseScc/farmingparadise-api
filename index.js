@@ -109,10 +109,16 @@ app.get('/stats', (req, res) => {
 });
 
 app.post('/pendinglink', (req, res) => {
-    const { code, steamId, name } = req.body;
+    let { code, steamId, name } = req.body;
 
     if (!code || !steamId || !name) {
         return res.status(400).json({ error: 'Code, SteamID, and name are required.' });
+    }
+
+    steamId = String(steamId); // 🔒 Force string to prevent precision loss
+
+    if (!/^\d{17}$/.test(steamId)) {
+        return res.status(400).json({ error: 'Invalid SteamID format.' });
     }
 
     pendingLinks[code] = steamId;
