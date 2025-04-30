@@ -48,6 +48,7 @@ app.get('/mainstats', (req, res) => {
     }
 
     const simplified = latestMainStats.map(player => ({
+        steamId: player.SteamID, // ✅ This line added so the app can match stats
         name: player.SteamName,
         level: Math.floor(player.MainStats?.Level || 0),
         xp: Math.floor(player.MainStats?.XP || 0),
