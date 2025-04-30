@@ -1,11 +1,31 @@
+// ✨ Required modules
 const express = require('express');
-const crypto = require('crypto'); // For hashing passcodes
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const app = express();
 const PORT = 8080;
 
 app.use(express.json());
 
-// Store latest server info
+// 📁 Ensure data folder exists
+const dataFolder = path.join(__dirname, 'data');
+if (!fs.existsSync(dataFolder)) fs.mkdirSync(dataFolder);
+
+// 📁 Data file paths
+const namesPath = path.join(dataFolder, 'player_names.json');
+const statsPath = path.join(dataFolder, 'player_stats.json');
+const mainStatsPath = path.join(dataFolder, 'main_stats.json');
+
+// 🧠 Load saved data
+let latestPlayerNames = fs.existsSync(namesPath) ? require(namesPath) : {};
+let latestStatsData = fs.existsSync(statsPath) ? require(statsPath) : [];
+let latestMainStats = fs.existsSync(mainStatsPath) ? require(mainStatsPath) : [];
+
+// Store pending link codes
+let pendingLinks = {};
+let linkedAccounts = {};
+
 let latestRustData = {
     server_online: false,
     server_name: "",
@@ -14,16 +34,6 @@ let latestRustData = {
     map: ""
 };
 
-// Store latest stats data
-let latestStatsData = [];
-
-// Store pending link codes (code => SteamID)
-let pendingLinks = {};
-
-// Store linked accounts (SteamID => passcodeHash)
-let linkedAccounts = {};
-
-// Receive updated server info from Rust plugin
 app.post('/server', (req, res) => {
     const data = req.body;
     console.log('Received data from Rust plugin (from /server):', data);
@@ -32,13 +42,12 @@ app.post('/server', (req, res) => {
     res.status(200).json({ message: 'Server info received successfully' });
 });
 
-let latestMainStats = []; // <-- new memory store
-
 app.post('/mainstats', (req, res) => {
     const data = req.body;
     console.log('Received main page stats data:', data);
 
     latestMainStats = data;
+    fs.writeFileSync(mainStatsPath, JSON.stringify(latestMainStats, null, 2));
     res.status(200).json({ message: 'Main stats received successfully' });
 });
 
@@ -48,7 +57,7 @@ app.get('/mainstats', (req, res) => {
     }
 
     const simplified = latestMainStats.map(player => ({
-        steamId: player.SteamID, // ✅ This line added so the app can match stats
+        steamId: player.SteamID,
         name: player.SteamName,
         level: Math.floor(player.MainStats?.Level || 0),
         xp: Math.floor(player.MainStats?.XP || 0),
@@ -59,21 +68,19 @@ app.get('/mainstats', (req, res) => {
     res.json({ players: simplified });
 });
 
-// Provide server info to the mobile app
 app.get('/serverinfo', (req, res) => {
     res.json(latestRustData);
 });
 
-// Receive updated stats from Rust plugin
 app.post('/stats', (req, res) => {
     const data = req.body;
     console.log('Received stats data from Rust plugin:', data);
 
     latestStatsData = data;
+    fs.writeFileSync(statsPath, JSON.stringify(latestStatsData, null, 2));
     res.status(200).json({ message: 'Stats data received successfully' });
 });
 
-// Provide formatted stats to the mobile app
 app.get('/stats', (req, res) => {
     if (!latestStatsData || latestStatsData.length === 0) {
         return res.json({ players: [], yourStats: null });
@@ -99,10 +106,7 @@ app.get('/stats', (req, res) => {
     });
 
     const topPlayers = latestStatsData.map(simplifyPlayer);
-    
-    res.json({
-        players: topPlayers,
-    });
+    res.json({ players: topPlayers });
 });
 
 app.post('/pendinglink', (req, res) => {
@@ -115,11 +119,12 @@ app.post('/pendinglink', (req, res) => {
     pendingLinks[code] = steamId;
     latestPlayerNames[steamId] = name;
 
+    fs.writeFileSync(namesPath, JSON.stringify(latestPlayerNames, null, 2));
+
     console.log(`[LinkAPI] Saved pending link: Code=${code}, SteamID=${steamId}, Name=${name}`);
     res.json({ success: true });
 });
 
-// 📲 Handle account linking from mobile app
 app.post('/linkcode', (req, res) => {
     const { code, passcode } = req.body;
 
@@ -135,34 +140,22 @@ app.post('/linkcode', (req, res) => {
         return res.status(404).json({ error: 'Invalid or expired link code.' });
     }
 
-    const name = latestPlayerNames[steamId] || "UnknownPlayer"; // <--- new: grab name if possible
-
-    // Hash the passcode
+    const name = latestPlayerNames[steamId] || "UnknownPlayer";
     const passcodeHash = crypto.createHash('sha256').update(passcode).digest('hex');
 
     linkedAccounts[steamId] = { passcodeHash, playerName: name };
-
-    // Clear the pending code now that it's linked
     delete pendingLinks[code];
 
     console.log(`Linked SteamID ${steamId} (${name}) with hashed passcode.`);
-
-    // Return both SteamID and PlayerName to the app!
-    res.json({
-        SteamID: steamId.toString(), // <-- FORCE to string here
-        PlayerName: name
-    });
+    res.json({ SteamID: steamId.toString(), PlayerName: name });
 });
 
-// In-memory chat storage
 let chatMessages = [];
 
-// GET /chat - return chat history
 app.get('/chat', (req, res) => {
     res.json(chatMessages);
 });
 
-// POST /chat/send
 app.post('/chat/send', (req, res) => {
     const { name, message } = req.body;
 
@@ -171,7 +164,6 @@ app.post('/chat/send', (req, res) => {
     }
 
     const formattedMessage = `${name}: ${message}`;
-
     chatMessages.push(formattedMessage);
 
     if (chatMessages.length > 100) {
@@ -182,13 +174,10 @@ app.post('/chat/send', (req, res) => {
     res.status(200).json({ success: true });
 });
 
-let latestPlayerNames = {};
-
 app.get('/names', (req, res) => {
     res.json(latestPlayerNames);
 });
 
-// Start the server
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`API Server running at http://0.0.0.0:${PORT}`);
 });
