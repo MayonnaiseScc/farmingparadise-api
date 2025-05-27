@@ -1,3 +1,5 @@
+// 📁 index.js
+
 const express = require('express');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -20,7 +22,7 @@ let latestMainStats = fs.existsSync(mainStatsPath) ? require(mainStatsPath) : []
 let pendingLinks = {};
 let linkedAccounts = {};
 let chatMessages = [];
-let latestEventStatus = {}; // ✅ Added for EventStatusSender
+let latestEventStatus = {};
 
 let latestRustData = {
     server_online: false,
@@ -129,7 +131,9 @@ app.post('/linkcode', (req, res) => {
 });
 
 app.get('/chat', (req, res) => {
-    res.json(chatMessages);
+    const cutoff = Date.now() - (48 * 60 * 60 * 1000); // 48 hours
+    const recent = chatMessages.filter(msg => msg.timestamp > cutoff);
+    res.json(recent);
 });
 
 app.post('/chat/send', (req, res) => {
@@ -140,7 +144,11 @@ app.post('/chat/send', (req, res) => {
     const resolvedName = latestPlayerNames[name] || linkedAccounts[name]?.playerName || name;
     const formattedMessage = `${resolvedName}: ${message}`;
 
-    chatMessages.push(formattedMessage);
+    chatMessages.push({
+        text: formattedMessage,
+        timestamp: Date.now()
+    });
+
     if (chatMessages.length > 100) chatMessages.shift();
 
     console.log(`[Chat] ${formattedMessage}`);
@@ -151,7 +159,6 @@ app.get('/names', (req, res) => {
     res.json(latestPlayerNames);
 });
 
-// ✅ New endpoints for event status
 app.post('/events', (req, res) => {
     latestEventStatus = req.body;
     console.log('[Events] Received event status:', latestEventStatus);
