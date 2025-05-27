@@ -1,5 +1,3 @@
-// 📁 index.js
-
 const express = require('express');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -130,9 +128,15 @@ app.post('/linkcode', (req, res) => {
     res.json({ SteamID: steamId.toString(), PlayerName: name });
 });
 
+// ✅ Pull only the last 48h, return just .text
 app.get('/chat', (req, res) => {
     const cutoff = Date.now() - (48 * 60 * 60 * 1000); // 48 hours
-    const recent = chatMessages.filter(msg => msg.timestamp > cutoff);
+    const recent = chatMessages
+        .filter(msg =>
+            typeof msg === 'string' || (msg.timestamp && msg.timestamp > cutoff)
+        )
+        .map(msg => typeof msg === 'string' ? msg : msg.text);
+
     res.json(recent);
 });
 
