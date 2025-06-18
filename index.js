@@ -170,6 +170,36 @@ app.get('/events', (req, res) => {
     res.json(latestEventStatus);
 });
 
+
+// 📻 RADIO STATION ENDPOINT
+const radioPath = path.join(dataFolder, 'radio_stations.json');
+let radioStations = fs.existsSync(radioPath) ? require(radioPath) : [];
+
+app.post('/radio/add', (req, res) => {
+    const { name, youtube } = req.body;
+
+    if (!name || !youtube) {
+        return res.status(400).json({ error: 'Missing station name or YouTube link' });
+    }
+
+    const station = {
+        name,
+        youtube,
+        submittedAt: Date.now()
+    };
+
+    radioStations.push(station);
+    fs.writeFileSync(radioPath, JSON.stringify(radioStations, null, 2));
+
+    console.log(`[Radio] Added station: ${name} (${youtube})`);
+    res.json({ success: true, message: 'Station received and saved.' });
+});
+
+app.get('/radio/stations', (req, res) => {
+    res.json(radioStations);
+});
+
+
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`✅ API Server running at http://0.0.0.0:${PORT}`);
 });
